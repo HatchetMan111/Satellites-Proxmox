@@ -42,7 +42,11 @@ STATE="${MOCK_STATE_DIR:-/tmp/mock-pct}"
 mkdir -p "$STATE"
 case "$1" in
     list)
-        # Echtes pct list hat KEINE Kopfzeile – direkt die CT-Zeilen ausgeben.
+        # Echtes pct list-Format: Kopfzeile + "VMID Status Lock Name".
+        # Spalten variieren (Lock bei LXCs oft leer) – der Installer darf
+        # sich deshalb NICHT auf eine feste Spalte verlassen.
+        echo "VMID       Status     Lock         Name"
+        echo "------------------------------------------------------------------"
         if [ -f "$STATE/list.txt" ]; then cat "$STATE/list.txt"; fi
         ;;
     create)
@@ -51,8 +55,9 @@ case "$1" in
         echo "running" > "$STATE/$id.status"
         echo "10.0.0.$id" > "$STATE/$id.ip"
         # In die CT-Liste eintragen, damit Status/Update/Idempotenz ihn sehen.
-        # Echtes pct list-Format: VMID(1) NAME(2) STATUS(3) MEM(4) BOOTDISK(5) PID(6)
-        echo "$id satellites running 1024 1234 5678" >> "$STATE/list.txt"
+        # Echtes Format: VMID Status Lock Name (Lock absichtlich "-" wie bei
+        # echten LXCs – der Name steht damit in Spalte 4, nicht 2!).
+        echo "$id    running    -            satellites" >> "$STATE/list.txt"
         # Netzwerkgabe simulieren
         echo "eth0: 10.0.0.$id/24"
         ;;
@@ -61,9 +66,9 @@ case "$1" in
         ;;
     stop)
         echo "stopped" > "$STATE/$2.status"
-        # In list.txt auf stopped setzen (Spalte 3)
+        # In list.txt auf stopped setzen (Spalte 3 = Status)
         if [ -f "$STATE/list.txt" ]; then
-            sed -i "s/\($2 [^ ]*\) running/\1 stopped/" "$STATE/list.txt"
+            sed -i "s/^\([[:space:]]*$2[[:space:]]*\)running/\1stopped/" "$STATE/list.txt"
         fi
         ;;
     destroy)
@@ -73,7 +78,11 @@ case "$1" in
         rm -f "$STATE/$2.status" "$STATE/$2.ip" "$STATE/$2.service-active" "$STATE/$2.static"
         ;;
     status)
-        echo "status: $(cat "$STATE/$2.status" 2>/dev/null || echo unknown)"
+        # Echtes pct status: "status: running" – Status primär aus list.txt
+        # (Spalte 2), Fallback auf die .status-Datei.
+        st=$(awk -v id="$2" '$1==id {print $2; exit}' "$STATE/list.txt" 2>/dev/null)
+        if [ -z "$st" ]; then st=$(cat "$STATE/$2.status" 2>/dev/null || echo unknown); fi
+        echo "status: $st"
         ;;
     exec)
         id="$2"; shift 2

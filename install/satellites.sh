@@ -124,12 +124,12 @@ fi
 
 # ── Hilfsfunktionen ────────────────────────────────────────────────────────
 ct_exists() {
-    # NAME ist Spalte 2 (pct list: VMID(1) NAME(2) STATUS(3) MEM(4) BOOTDISK(5) PID(6))
-    # – NICHT $NF! (Frühere Installer-Vorlagen nutzten $NF; das matcht die PID.)
-    if pct list 2>/dev/null | awk 'NR>1 {print $2}' | grep -qx "${1:-}"; then
-        return 0
-    fi
-    return 1
+    # Echtes `pct list`: Spalte 1 = VMID, 2 = Status, 3 = Lock, 4 = Name –
+    # die Spaltenzahl/-lage VARIIERT aber (Lock oft leer, v. a. bei LXCs).
+    # Deshalb NICHT eine feste Spalte, sondern der Hostname als eigenes
+    # (durch Leerraum begrenztes) Wort in der Zeile.
+    pct list 2>/dev/null \
+        | awk -v h="${1:-}" 'NR>1 && $1 ~ /^[0-9]+$/ && $0 ~ ("(^|[[:space:]])" h "([[:space:]]|$)") {found=1} END {exit !found}'
 }
 
 find_free_id() {
@@ -141,10 +141,11 @@ find_free_id() {
 }
 
 find_ct_id_by_hostname() {
-    # NAME ist Spalte 2 – NICHT $NF (das wäre die PID). Ohne NR>1, damit auch
-    # ein einzelner CT (Zeile 1) gefunden wird; die Kopfzeile von pct list
-    # matcht als $2="NAME" nie einen echten Hostnamen.
-    pct list 2>/dev/null | awk -v h="$CT_HOSTNAME" '$2==h {print $1; exit}'
+    # Hostname als eigenes Wort in der pct list-Zeile suchen (Spaltenlage
+    # variiert: VMID/Status/Lock/Name, Lock bei LXCs oft leer). NR>1
+    # ueberspringt die Kopfzeile; $1 muss eine Zahl sein (echte CT-Zeile).
+    pct list 2>/dev/null \
+        | awk -v h="$CT_HOSTNAME" 'NR>1 && $1 ~ /^[0-9]+$/ && $0 ~ ("(^|[[:space:]])" h "([[:space:]]|$)") {print $1; exit}'
 }
 
 get_ct_ip() {
@@ -767,7 +768,8 @@ do_status() {
     local state
     state=$(pct status "$ct_id" 2>/dev/null | awk '{print $2}' || true)
 
-    pct list 2>/dev/null | awk -v id="$ct_id" -v st="$state" '$1==id {print "Container:  " $1 " (" $2 ") – " st}'
+    pct list 2>/dev/null | awk -v id="$ct_id" -v st="$state" -v hn="$CT_HOSTNAME" \
+        '$1==id {print "Container:  " $1 " (" hn ") – " st}'
 
     if [[ "$state" != "running" ]]; then
         warn "Container $ct_id ist nicht gestartet (${state:-unbekannt}) – Service/Version/Web-UI ohne Start nicht prüfbar."
