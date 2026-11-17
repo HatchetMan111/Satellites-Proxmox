@@ -29,8 +29,10 @@ set -Eeuo pipefail
 # ── Defaults ────────────────────────────────────────────────────────────────
 INSTALLER_VERSION="1.0.0"
 APP_NAME="satellites"
-UPSTREAM_OWNER="dev-Armaan"
-UPSTREAM_REPO="satellites"
+# Die App liegt in DIESEM Repo unter app/ (backend/ + frontend/) – NICHT bei
+# dev-Armaan/satellites (das ist eine andere TypeScript-App ohne Python).
+UPSTREAM_OWNER="HatchetMan111"
+UPSTREAM_REPO="Satellites-Proxmox"
 UPSTREAM_BRANCH="main"      # Update-Quelle; für einen Fixpin hier z. B. einen Commit-Hash eintragen
 UPSTREAM_TARBALL_URL="https://codeload.github.com/${UPSTREAM_OWNER}/${UPSTREAM_REPO}/tar.gz/refs/heads/${UPSTREAM_BRANCH}"
 NODE_MAJOR=22               # Build-Werkzeug (Vite)
@@ -363,20 +365,26 @@ echo ">>> Python-Version prüfen (>= 3.10 erforderlich) ..."
 PY_VER=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
 echo "    Python $PY_VER"
 
-echo ">>> Satellites-Quellcode von GitHub laden ..."
+echo ">>> Satellites-Quellcode von GitHub laden (Repo: ${UPSTREAM_OWNER}/${UPSTREAM_REPO}) ..."
 mkdir -p /opt/satellites
 curl -fSL --retry 3 "${UPSTREAM_TARBALL_URL}" -o /tmp/satellites.tar.gz
 rm -rf /tmp/satellites-src && mkdir -p /tmp/satellites-src
 tar -xzf /tmp/satellites.tar.gz -C /tmp/satellites-src --strip-components=1
-rm -rf /opt/satellites/src && mkdir -p /opt/satellites/src
-cp -a /tmp/satellites-src/. /opt/satellites/src/
-
-cd /opt/satellites/src
+# Der Tarball enthält die App unter app/ (backend/ + frontend/) –
+# plus install/, systemd/, README etc. (die brauchen wir nicht im CT).
+if [ ! -d /tmp/satellites-src/app/backend ]; then
+    die "Unerwartete Repo-Struktur: app/backend fehlt im Tarball.
+  Erwartet: app/backend/ + app/frontend/ (eigenes Repo). Tarball-Inhalt:
+  $(ls /tmp/satellites-src | head -10 | tr '\n' ' ')"
+fi
+rm -rf /opt/satellites/src && mkdir -p /opt/satellites/src/backend /opt/satellites/src/frontend
+cp -a /tmp/satellites-src/app/backend/. /opt/satellites/src/backend/
+cp -a /tmp/satellites-src/app/frontend/. /opt/satellites/src/frontend/
 
 echo ">>> Virtuelles Environment anlegen + Python-Abhängigkeiten installieren ..."
 python3 -m venv /opt/satellites/.venv
 /opt/satellites/.venv/bin/pip install --quiet --upgrade pip
-/opt/satellites/.venv/bin/pip install --quiet -r requirements.txt
+/opt/satellites/.venv/bin/pip install --quiet -r /opt/satellites/src/backend/requirements.txt
 
 echo ">>> Frontend-Abhängigkeiten installieren (npm) ..."
 cd /opt/satellites/src/frontend
@@ -388,8 +396,8 @@ fi
 
 echo ">>> Frontend bauen (vite build) – das dauert 1-2 Minuten ..."
 npm run build
-if [[ ! -f ../backend/static/index.html ]]; then
-    die "Build fehlgeschlagen: ../backend/static/index.html fehlt (vite-Ausgabe oben ansehen)."
+if [[ ! -f /opt/satellites/src/backend/static/index.html ]]; then
+    die "Build fehlgeschlagen: /opt/satellites/src/backend/static/index.html fehlt (vite-Ausgabe oben ansehen)."
 fi
 
 echo ">>> systemd-Service installieren (User satellites, Restart=always) ..."
