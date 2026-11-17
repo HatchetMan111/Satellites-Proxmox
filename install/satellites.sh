@@ -668,7 +668,7 @@ do_install() {
         ok "SSH-Public-Key wird in den Container installiert (ssh-key-Login als root)"
         ssh_keys_args=(--ssh-public-keys "$SSH_KEY_FILE")
     fi
-    pct create "$CT_ID" "local:vztmpl/${template}" \
+    pct create "$CT_ID" "$template" \
         --hostname "$CT_HOSTNAME" \
         --cores "$CT_CORES" \
         --memory "$CT_MEMORY" \
