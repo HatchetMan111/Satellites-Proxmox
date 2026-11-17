@@ -9,6 +9,16 @@ export default defineConfig({
   build: {
     outDir: '../backend/static',
     emptyOutDir: true,
+    // three.js ist gross (~450 kB) und ändert sich selten – eigener Chunk,
+    // damit der Browser ihn beim App-Update nicht neu laden muss.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 700,
   },
   server: {
     proxy: {

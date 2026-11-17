@@ -55,8 +55,16 @@ Der Installer:
 
 Nach der Installation: `http://<CONTAINER-IP>:8020`
 
+Die Oberfläche zeigt einen **rotierenden 3D-Globe** (three.js) mit:
+
+- Kontinenten als Punktwolke (gebacken aus `world-atlas`, keine externen Texturen)
+- **ISS-Marker** (grün, pulsierend) – Live-Position, alle 10 s aktualisiert
+- **Satellitenliste** (TLE von CelesTrak) – Klick auf „Position" zeigt den
+  Satelliten als gelben Marker + Orbit-Ring auf der Kugel
+- Breiten-/Längengrad-Gitter, Atmosphären-Glow, Sternenhintergrund
+
 Die App verbindet sich beim Start/Refresh mit CelesTrak (TLE-Cache 1 h) –
-danach läuft sie offline-fähig aus dem Cache.
+danach läuft sie offline-fähig aus dem Cache. **Keine Cloud-Dienste nötig.**
 
 ## Update
 
@@ -90,6 +98,9 @@ Satellites-Proxmox/
 ├── systemd/satellites.service # systemd-Unit (Referenz; der Installer schreibt sie identisch)
 ├── app/backend/               # FastAPI (TLE-Cache, Bahnberechnung, API)
 ├── app/frontend/              # React/Vite (Build → app/backend/static/)
+│   ├── src/globe.jsx          # 3D-Weltkugel (three.js)
+│   ├── src/landmask.json      # gebackene Kontinente (Punktwolke)
+│   └── scripts/build-landmask.mjs  # generiert die Landmaske (einmalig)
 ├── test/mock-harness.sh       # Mock-Harness (pct/git/pveam) ohne echten Proxmox-Host
 └── README.md
 ```

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
+import Globe from './globe.jsx'
 
-// Satellites – Übersicht: Liste der Satelliten (TLE) + Live-Position (ISS).
+// Satellites – Übersicht: 3D-Weltkugel mit ISS-Live-Position + Satellitenliste.
 // Fragt ausschließlich die lokale FastAPI an (keine externen Dienste im Betrieb).
 
 function Satellites() {
@@ -9,6 +10,7 @@ function Satellites() {
   const [iss, setIss] = useState(null)
   const [selected, setSelected] = useState(null)
   const [pos, setPos] = useState(null)
+  const [positions, setPositions] = useState([])   // Positionen für den Globe
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -24,12 +26,17 @@ function Satellites() {
       .then((d) => setSatellites(d.satellites || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
+  }, [])
 
-    // ISS-Position initial + alle 10 s aktualisieren
+  // ISS-Position initial + alle 10 s aktualisieren
+  useEffect(() => {
     const loadIss = () =>
       fetch('/api/iss')
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-        .then(setIss)
+        .then((d) => {
+          setIss(d)
+          setPositions((prev) => [...prev.filter((p) => p.norad_id !== d.norad_id), d])
+        })
         .catch(() => setIss(null))
     loadIss()
     const iv = setInterval(loadIss, 10000)
@@ -40,12 +47,15 @@ function Satellites() {
   useEffect(() => {
     if (!selected) {
       setPos(null)
-      return
+      return undefined
     }
     const load = () =>
       fetch(`/api/satellites/${selected.norad_id}/position`)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-        .then(setPos)
+        .then((d) => {
+          setPos(d)
+          setPositions((prev) => [...prev.filter((p) => p.norad_id !== d.norad_id), d])
+        })
         .catch((e) => setError(e.message))
     load()
     const iv = setInterval(load, 10000)
@@ -84,22 +94,23 @@ function Satellites() {
       )}
 
       <div className="grid">
-        <section className="panel">
+        <section className="panel globe-panel">
           <div className="panel-head">
-            <h2>🛰 ISS – Live-Position</h2>
-            <span className="muted">alle 10 s aktualisiert</span>
+            <h2>🌍 Weltkugel</h2>
+            <span className="muted">Positionen alle 10 s aktualisiert</span>
           </div>
-          {iss ? (
+          <Globe positions={positions} iss={iss} selected={selected} selectedPos={pos} />
+          {iss && (
             <div className="iss-card">
-              <div className="iss-lat">{iss.lat}°</div>
-              <div className="iss-lon">{iss.lon}°</div>
+              <div className="iss-row">
+                <span className="iss-lat">{iss.lat}°</span>
+                <span className="iss-lon">{iss.lon}°</span>
+              </div>
               <div className="iss-meta">
                 Höhe: {iss.alt_km} km · Umlauf: {iss.period_min} min · Inklination:{' '}
                 {iss.inclination_deg}°
               </div>
             </div>
-          ) : (
-            <p className="muted">Lade ISS-Position …</p>
           )}
         </section>
 
@@ -123,21 +134,24 @@ function Satellites() {
                 </tr>
               </thead>
               <tbody>
-                {satellites.map((s) => (
-                  <tr
-                    key={s.norad_id}
-                    className={selected?.norad_id === s.norad_id ? 'selected' : ''}
-                  >
-                    <td>{s.norad_id}</td>
-                    <td className="sat-name" title={s.name}>
-                      {s.name}
-                    </td>
-                    <td>{s.tle2 ? `${(1440 / parseFloat(s.tle2.slice(52, 63))).toFixed(1)} min` : '–'}</td>
-                    <td>
-                      <button onClick={() => setSelected(s)}>Position</button>
-                    </td>
-                  </tr>
-                ))}
+                {satellites.map((s) => {
+                  const period = s.tle2 ? (1440 / parseFloat(s.tle2.slice(52, 63))).toFixed(1) : null
+                  return (
+                    <tr
+                      key={s.norad_id}
+                      className={selected?.norad_id === s.norad_id ? 'selected' : ''}
+                    >
+                      <td>{s.norad_id}</td>
+                      <td className="sat-name" title={s.name}>
+                        {s.name}
+                      </td>
+                      <td>{period ? `${period} min` : '–'}</td>
+                      <td>
+                        <button onClick={() => setSelected(s)}>Position</button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}
@@ -147,7 +161,8 @@ function Satellites() {
               <p>
                 Breite: {pos.lat}° · Länge: {pos.lon}°
                 <br />
-                Höhe: {pos.alt_km} km · Umlauf: {pos.period_min} min
+                Höhe: {pos.alt_km} km · Umlauf: {pos.period_min} min · Inklination:{' '}
+                {pos.inclination_deg}°
               </p>
             </div>
           )}
@@ -156,4 +171,5 @@ function Satellites() {
     </div>
   )
 }
+
 export default Satellites

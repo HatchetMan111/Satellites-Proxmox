@@ -85,9 +85,61 @@ button:disabled { opacity: 0.6; cursor: default; }
 button:not(:disabled):hover { filter: brightness(1.1); }
 
 .iss-card { text-align: center; padding: 8px 0; }
+.iss-row { display: flex; gap: 10px; justify-content: center; align-items: baseline; }
 .iss-lat { font-size: 40px; font-weight: 700; color: var(--accent); }
 .iss-lon { font-size: 24px; color: var(--text); }
 .iss-meta { color: var(--muted); margin-top: 8px; font-size: 14px; }
+
+/* ── 3D-Globe ─────────────────────────────────────────────────────────── */
+.globe-wrap {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #0d1730 0%, #070c1a 75%);
+}
+.globe-canvas { width: 100%; height: 100%; display: block; position: relative; }
+/* three.js hängt seinen eigenen Canvas ein – er füllt den Container */
+.globe-canvas canvas { display: block; width: 100%; height: 100%; }
+
+.globe-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  background: rgba(7, 12, 26, 0.6);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.globe-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.globe-legend .dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.globe-legend .dot.iss { background: #34d399; }
+.globe-legend .dot.sel { background: #ffd166; }
+.globe-legend .dot.sat { background: #4f8cff; }
+
+.globe-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 860px) {
+  .globe-wrap { height: 300px; }
+  .iss-lat { font-size: 30px; }
+}
 
 .sat-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .sat-table th {
