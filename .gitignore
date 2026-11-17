@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+app/frontend/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Build output (wird vom Installer im Container gebaut)
+app/backend/static/
+app/backend/tle_cache.json
+
+# Logs / Temp
+*.log
+/tmp/

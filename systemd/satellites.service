@@ -1,0 +1,24 @@
+[Unit]
+Description=Satellites – lokale Satelliten-Tracking-Web-App
+Documentation=https://github.com/HatchetMan111/Satellites-Proxmox
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=satellites
+Group=satellites
+WorkingDirectory=/opt/satellites/src/backend
+EnvironmentFile=/opt/satellites/.env.runtime
+
+# FastAPI/uvicorn servt Frontend (static/) + /api/*.
+# PORT ist der Web-UI-Port aus dem Installer (--port, Default 8020).
+ExecStart=/opt/satellites/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8020
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target
