@@ -330,7 +330,7 @@ write_inner_script() {
 #!/usr/bin/env bash
 # =============================================================================
 # Satellites In-Container-Setup (idempotent – safe für Update & Re-Run)
-# Variablen via env: PORT, HOST_DNS, UPSTREAM_TARBALL_URL, NODE_MAJOR, APP_NAME
+# Variablen via env: PORT, HOST_DNS, UPSTREAM_TARBALL_URL, NODE_MAJOR
 # =============================================================================
 set -Eeuo pipefail
 trap 'echo "✘ Setup-Fehler: exit $? in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
@@ -365,7 +365,7 @@ echo ">>> Python-Version prüfen (>= 3.10 erforderlich) ..."
 PY_VER=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
 echo "    Python $PY_VER"
 
-echo ">>> Satellites-Quellcode von GitHub laden (Repo: ${UPSTREAM_OWNER}/${UPSTREAM_REPO}) ..."
+echo ">>> Satellites-Quellcode von GitHub laden (Repo: ${UPSTREAM_TARBALL_URL}) ..."
 mkdir -p /opt/satellites
 curl -fSL --retry 3 "${UPSTREAM_TARBALL_URL}" -o /tmp/satellites.tar.gz
 rm -rf /tmp/satellites-src && mkdir -p /tmp/satellites-src
